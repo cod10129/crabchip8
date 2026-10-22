@@ -142,6 +142,7 @@ impl Chip8Interpreter {
                 let offset = self.regs[RegLabel::V0].0;
                 self.pc = nnn + offset;
             },
+            Instruction::DrawSprite { x, y, n } => { self.draw_sprite(x, y, n) },
             Instruction::LoadDelayTimer { x } => {
                 self.regs[x].0 = self.delay_timer;
             },
@@ -183,11 +184,29 @@ impl Chip8Interpreter {
                 self.i_register += x.as_number() + 1;
             },
             Instruction::RandomWithMask { .. }
-                | Instruction::DrawSprite { .. }
                 | Instruction::SkipIfKeyPressed { .. }
                 | Instruction::SkipIfKeyNotPressed { .. }
                 | Instruction::WaitForKeypress { .. } => todo!()
         }
+    }
+
+    fn draw_sprite(&mut self, x: RegLabel, y: RegLabel, n: u8) {
+        let base_x = self.regs[x].0;
+        let base_y = self.regs[y].0;
+        let i = usize::from(self.i_register.0);
+        let sprite_data = &self.memory.0[i..][..usize::from(n)];
+        let mut any_unset = false;
+        for (i, &byte) in sprite_data.iter().enumerate() {
+            let i = u8::try_from(i).unwrap();
+            let x = usize::from(base_x);
+            let y = usize::from(base_y + i);
+            let screen_value = &mut self.graphics.0[y][x];
+            *screen_value ^= byte;
+            if (*screen_value & byte) != 0 {
+                any_unset = true;
+            }
+        }
+        self.regs[RegLabel::VF].0 = u8::from(any_unset);
     }
 }
 
