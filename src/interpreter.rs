@@ -4,6 +4,9 @@ use std::sync::{Arc, Mutex};
 
 use crate::{Address, GraphicsState, Memory, RegLabel, Registers, inst::Instruction};
 
+pub mod providers;
+use providers::{RandomnessProvider, KeyboardProvider, SoundProvider, TimeProvider};
+
 /// The container for all the information stored in the CHIP-8 interpreter.
 pub struct Chip8Interpreter {
     memory: Memory,
@@ -307,45 +310,4 @@ impl Chip8Interpreter {
         }
         self.regs[RegLabel::VF].0 = u8::from(any_unset);
     }
-}
-
-/// A type that can provide randomness to the [`Chip8Interpreter`].
-pub trait RandomnessProvider {
-    /// Generates a random number from 0 to 255.
-    fn random(&mut self) -> u8;
-}
-
-/// A type that can provide keyboard inputs to the [`Chip8Interpreter`].
-pub trait KeyboardProvider {
-    /// Is the key specified by `key` currently pressed?
-    ///
-    /// `key` must be less than 16/`0x10`.
-    fn is_key_pressed(&mut self, key: u8) -> bool;
-
-    /// Returns the corresponding digit `0-F` if a key is currently pressed,
-    /// and `0xFF` otherwise.
-    fn is_any_key_pressed(&mut self) -> u8 {
-        for n in 0..16 {
-            if self.is_key_pressed(n) {
-                return n;
-            }
-        }
-        0xFF
-    }
-}
-
-/// A type that can provide sound to the [`Chip8Interpreter`].
-pub trait SoundProvider {
-    /// Enables sound output.
-    fn enable_sound(&mut self);
-    /// Disables sound output.
-    fn disable_sound(&mut self);
-}
-
-/// A type that can provide time to the [`Chip8Interpreter`].
-///
-/// It processes "ticks" that are at a rate of 60 Hz.
-pub trait TimeProvider {
-    /// Returns the number of ticks that have passed since some arbitrary epoch.
-    fn current_tick_count(&mut self) -> u64;
 }
