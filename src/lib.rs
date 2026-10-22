@@ -2,6 +2,8 @@
 
 use std::{fmt, ops::{Index, IndexMut}};
 
+pub mod inst;
+
 /// The CHIP-8 memory.
 ///
 /// 4096 bytes, with the range `0x200-0xE8F` formally available to programs.
