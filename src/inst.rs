@@ -1,43 +1,77 @@
 //! Instructions for CHIP-8.
-#![allow(missing_docs)]
 
 use crate::{Address, RegLabel};
 
+/// A CHIP-8 instruction.
 pub enum Instruction {
-    ClearScreen, // `00E0`
-    ReturnFromSubroutine, // `00EE`
-    Jump { nnn: Address }, // `1NNN`
-    ExecuteSubroutine { nnn: Address }, // `2NNN`
-    SkipIfEqual { x: RegLabel, nn: u8 }, // `3XNN`
-    SkipIfNotEqual { x: RegLabel, nn: u8 }, // `4XNN`
-    SkipIfRegistersEqual { x: RegLabel, y: RegLabel }, // `5XY0`
-    StoreInRegister { x: RegLabel, nn: u8 }, // `6XNN`
-    AddToRegister { x: RegLabel, nn: u8 }, // `7XNN`
-    StoreRegister { x: RegLabel, y: RegLabel }, // `8XY0`
-    RegisterOr { x: RegLabel, y: RegLabel }, // `8XY1`
-    RegisterAnd { x: RegLabel, y: RegLabel }, // `8XY2`
-    RegisterXor { x: RegLabel, y: RegLabel }, // `8XY3`
-    AddRegisters { x: RegLabel, y: RegLabel }, // `8XY4`
-    SubtractRegisters { x: RegLabel, y: RegLabel }, // `8XY5`
-    RegisterShiftRight { x: RegLabel, y: RegLabel }, // `8XY6`
-    SubtractFromRegister { x: RegLabel, y: RegLabel }, // `8XY7`
-    RegisterShiftLeft { x: RegLabel, y: RegLabel }, // `8XYE`
-    SkipIfRegistersNotEqual { x: RegLabel, y: RegLabel }, // `9XY0`
-    StoreAddress { nnn: Address }, // `ANNN`
-    JumpWithOffset { nnn: Address }, // `BNNN`
-    RandomWithMask { x: RegLabel, nn: u8 }, // `CXNN`
-    DrawSprite { x: RegLabel, y: RegLabel, n: u8 }, // `DXYN`
-    SkipIfKeyPressed { x: RegLabel }, // `EX9E`
-    SkipIfKeyNotPressed { x: RegLabel }, // `EXA1`
-    LoadDelayTimer { x: RegLabel }, // `FX07`
-    WaitForKeypress { x: RegLabel }, // `FX0A`
-    SetDelayTimer { x: RegLabel }, // `FX15`
-    SetSoundTimer { x: RegLabel }, // `FX18`
-    AddToIRegister { x: RegLabel }, // `FX1E`
-    SetToPreloadedSpriteData { x: RegLabel }, // `FX29`
-    StoreBCDToMemory { x: RegLabel }, // `FX33`
-    StoreToMemory { x: RegLabel }, // `FX55`
-    LoadFromMemory { x: RegLabel }, // `FX65`
+    /// `00E0`
+    ClearScreen,
+    /// `00EE`
+    ReturnFromSubroutine,
+    /// `1NNN`
+    Jump { nnn: Address },
+    /// `2NNN`
+    ExecuteSubroutine { nnn: Address },
+    /// `3XNN`
+    SkipIfEqual { x: RegLabel, nn: u8 },
+    /// `4XNN`
+    SkipIfNotEqual { x: RegLabel, nn: u8 },
+    /// `5XY0`
+    SkipIfRegistersEqual { x: RegLabel, y: RegLabel },
+    /// `6XNN`
+    StoreInRegister { x: RegLabel, nn: u8 },
+    // `7XNN`
+    AddToRegister { x: RegLabel, nn: u8 },
+    /// `8XY0`
+    StoreRegister { x: RegLabel, y: RegLabel },
+    /// `8XY1`
+    RegisterOr { x: RegLabel, y: RegLabel },
+    /// `8XY2`
+    RegisterAnd { x: RegLabel, y: RegLabel },
+    /// `8XY3`
+    RegisterXor { x: RegLabel, y: RegLabel },
+    /// `8XY4`
+    AddRegisters { x: RegLabel, y: RegLabel },
+    // `8XY5`
+    SubtractRegisters { x: RegLabel, y: RegLabel },
+    // `8XY6`
+    RegisterShiftRight { x: RegLabel, y: RegLabel },
+    // `8XY7`
+    SubtractFromRegister { x: RegLabel, y: RegLabel },
+    // `8XYE`
+    RegisterShiftLeft { x: RegLabel, y: RegLabel },
+    // `9XY0`
+    SkipIfRegistersNotEqual { x: RegLabel, y: RegLabel },
+    // `ANNN`
+    StoreAddress { nnn: Address },
+    // `BNNN`
+    JumpWithOffset { nnn: Address },
+    // `CXNN`
+    RandomWithMask { x: RegLabel, nn: u8 },
+    // `DXYN`
+    DrawSprite { x: RegLabel, y: RegLabel, n: u8 },
+    // `EX9E`
+    SkipIfKeyPressed { x: RegLabel },
+    // `EXA1`
+    SkipIfKeyNotPressed { x: RegLabel },
+    // `FX07`
+    LoadDelayTimer { x: RegLabel },
+    // `FX0A`
+    WaitForKeypress { x: RegLabel },
+    // `FX15`
+    SetDelayTimer { x: RegLabel },
+    // `FX18`
+    SetSoundTimer { x: RegLabel },
+    // `FX1E`
+    AddToIRegister { x: RegLabel },
+    // `FX29`
+    SetToPreloadedSpriteData { x: RegLabel },
+    // `FX33`
+    StoreBCDToMemory { x: RegLabel },
+    // `FX55`
+    StoreToMemory { x: RegLabel },
+    // `FX55`
+    LoadFromMemory { x: RegLabel },
 }
 
 impl Instruction {
