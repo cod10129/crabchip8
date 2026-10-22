@@ -20,7 +20,7 @@ pub enum Instruction {
     SkipIfRegistersEqual { x: RegLabel, y: RegLabel },
     /// `6XNN`
     StoreInRegister { x: RegLabel, nn: u8 },
-    // `7XNN`
+    /// `7XNN`
     AddToRegister { x: RegLabel, nn: u8 },
     /// `8XY0`
     StoreRegister { x: RegLabel, y: RegLabel },
@@ -32,45 +32,45 @@ pub enum Instruction {
     RegisterXor { x: RegLabel, y: RegLabel },
     /// `8XY4`
     AddRegisters { x: RegLabel, y: RegLabel },
-    // `8XY5`
+    /// `8XY5`
     SubtractRegisters { x: RegLabel, y: RegLabel },
-    // `8XY6`
+    /// `8XY6`
     RegisterShiftRight { x: RegLabel, y: RegLabel },
-    // `8XY7`
+    /// `8XY7`
     SubtractFromRegister { x: RegLabel, y: RegLabel },
-    // `8XYE`
+    /// `8XYE`
     RegisterShiftLeft { x: RegLabel, y: RegLabel },
-    // `9XY0`
+    /// `9XY0`
     SkipIfRegistersNotEqual { x: RegLabel, y: RegLabel },
-    // `ANNN`
+    /// `ANNN`
     StoreAddress { nnn: Address },
-    // `BNNN`
+    /// `BNNN`
     JumpWithOffset { nnn: Address },
-    // `CXNN`
+    /// `CXNN`
     RandomWithMask { x: RegLabel, nn: u8 },
-    // `DXYN`
+    /// `DXYN`
     DrawSprite { x: RegLabel, y: RegLabel, n: u8 },
-    // `EX9E`
+    /// `EX9E`
     SkipIfKeyPressed { x: RegLabel },
-    // `EXA1`
+    /// `EXA1`
     SkipIfKeyNotPressed { x: RegLabel },
-    // `FX07`
+    /// `FX07`
     LoadDelayTimer { x: RegLabel },
-    // `FX0A`
+    /// `FX0A`
     WaitForKeypress { x: RegLabel },
-    // `FX15`
+    /// `FX15`
     SetDelayTimer { x: RegLabel },
-    // `FX18`
+    /// `FX18`
     SetSoundTimer { x: RegLabel },
-    // `FX1E`
+    /// `FX1E`
     AddToIRegister { x: RegLabel },
-    // `FX29`
+    /// `FX29`
     SetToPreloadedSpriteData { x: RegLabel },
-    // `FX33`
+    /// `FX33`
     StoreBCDToMemory { x: RegLabel },
-    // `FX55`
+    /// `FX55`
     StoreToMemory { x: RegLabel },
-    // `FX55`
+    /// `FX55`
     LoadFromMemory { x: RegLabel },
 }
 
