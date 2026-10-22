@@ -14,7 +14,7 @@ pub struct Chip8Interpreter {
     /// Program Counter
     pc: Address,
     /// Are we currently waiting for a keypress? (Instruction FX0A)
-    waiting: bool,
+    waiting_for_keypress: bool,
     randomness_provider: Box<dyn RandomnessProvider>,
     keyboard_provider: Box<dyn KeyboardProvider>,
     // time_provider: Box<dyn TimeProvider>,
@@ -36,7 +36,7 @@ impl Chip8Interpreter {
             sound_timer: 0,
             stack: Vec::with_capacity(16),
             pc: Address::new(0x200),
-            waiting: false,
+            waiting_for_keypress: false,
             randomness_provider: Box::new(randomness_provider),
             keyboard_provider: Box::new(keyboard_provider),
         }
@@ -211,7 +211,15 @@ impl Chip8Interpreter {
                     self.increment_pc();
                 }
             },
-            Instruction::WaitForKeypress { .. } => todo!()
+            Instruction::WaitForKeypress { x } => {
+                let pressed = self.keyboard_provider.is_any_key_pressed();
+                #[expect(clippy::if_not_else)]
+                if pressed != 255 {
+                    self.regs[x].0 = pressed;
+                } else {
+                    self.waiting_for_keypress = true;
+                }
+            },
         }
     }
 
@@ -247,6 +255,17 @@ pub trait KeyboardProvider {
     ///
     /// `key` must be less than 16/`0x10`.
     fn is_key_pressed(&mut self, key: u8) -> bool;
+
+    /// Returns the corresponding digit `0-F` if a key is currently pressed,
+    /// and `0xFF` otherwise.
+    fn is_any_key_pressed(&mut self) -> u8 {
+        for n in 0..16 {
+            if self.is_key_pressed(n) {
+                return n;
+            }
+        }
+        0xFF
+    }
 }
 
 /// A type that can provide time to the [`Chip8Interpreter`].
