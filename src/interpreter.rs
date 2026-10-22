@@ -298,23 +298,105 @@ impl Chip8Interpreter {
         let base_y = self.regs[y].0;
         let i = usize::from(self.i_register.0);
         let sprite_data = &self.memory.0[i..][..usize::from(n)];
-        let mut any_unset = false;
-        for (i, &byte) in sprite_data.iter().enumerate() {
-            let i = u8::try_from(i).unwrap();
-            let x_bit = usize::from(base_x);
-            let y_bit = usize::from(base_y + i);
-
-            let x_byte_base = x_bit / 8;
-            let bits_into_x_byte = x_bit % 8;
-            let x_segment = &mut graphics.0[y_bit][x_byte_base..][..2];
-            let left_byte = byte >> bits_into_x_byte;
-            let right_byte = u8::unbounded_shl(byte, (8 - bits_into_x_byte).try_into().unwrap());
-            x_segment[0] ^= left_byte;
-            x_segment[1] ^= right_byte;
-            if ((x_segment[0] & left_byte) | (x_segment[1] & right_byte)) != 0 {
-                any_unset = true;
-            }
+        eprint!("Drawing sprite data: ");
+        for byte in sprite_data {
+            eprint!("{byte:X} ");
         }
-        self.regs[RegLabel::VF].0 = u8::from(any_unset);
+        eprintln!();
+        let res = draw_sprite_data(sprite_data, base_x, base_y, &mut graphics);
+        self.regs[RegLabel::VF].0 = u8::from(res);
+    }
+}
+
+/// Draws the given sprite `data` to `graphics`, returning whether any bits were unset.
+fn draw_sprite_data(
+    data: &[u8], base_x: u8, base_y: u8, graphics: &mut GraphicsState,
+) -> bool {
+    let mut any_unset = false;
+    for (i, &byte) in data.iter().enumerate() {
+        let i = u8::try_from(i).unwrap();
+        let x_bit = usize::from(base_x);
+        let y_bit = usize::from(base_y + i);
+
+        let x_byte_base = x_bit / 8;
+        let bits_into_x_byte = x_bit % 8;
+        let x_segment = &mut graphics.0[y_bit][x_byte_base..][..2];
+        let left_byte = byte >> bits_into_x_byte;
+        let right_byte = u8::unbounded_shl(byte, (8 - bits_into_x_byte).try_into().unwrap());
+        x_segment[0] ^= left_byte;
+        x_segment[1] ^= right_byte;
+        if ((x_segment[0] & left_byte) | (x_segment[1] & right_byte)) != 0 {
+            any_unset = true;
+        }
+    }
+    any_unset
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{draw_sprite_data, GraphicsState};
+    use crate::{Memory, FONT_DATA, FONT_DATA_BASE_ADDRESS};
+
+    const SAMPLE_SPRITE: [u8; 4] = [
+        0b_11000011,
+        0b_01100110,
+        0b_00111100,
+        0b_00011000,
+    ];
+
+    #[test]
+    fn drawing_on_byte_lines() {
+        let mut graphics = GraphicsState::blank();
+        draw_sprite_data(&SAMPLE_SPRITE, 8, 2, &mut graphics);
+        assert_eq!(graphics.0[0..7], [
+            [0; 8],
+            [0; 8],
+            [0, 0b_11000011, 0, 0, 0, 0, 0, 0],
+            [0, 0b_01100110, 0, 0, 0, 0, 0, 0],
+            [0, 0b_00111100, 0, 0, 0, 0, 0, 0],
+            [0, 0b_00011000, 0, 0, 0, 0, 0, 0],
+            [0; 8],
+        ]);
+        for &row in &graphics.0[7..] {
+            assert_eq!(row, [0; 8]);
+        }
+    }
+
+    #[test]
+    fn drawing_between_lines() {
+        let mut graphics = GraphicsState::blank();
+        draw_sprite_data(&SAMPLE_SPRITE, 10, 1, &mut graphics);
+        assert_eq!(graphics.0[0..7], [
+            [0; 8],
+            [0, 0b00_110000, 0b11_000000, 0, 0, 0, 0, 0],
+            [0, 0b00_011001, 0b10_000000, 0, 0, 0, 0, 0],
+            [0, 0b00_001111, 0b00_000000, 0, 0, 0, 0, 0],
+            [0, 0b00_000110, 0b00_000000, 0, 0, 0, 0, 0],
+            [0; 8],
+            [0; 8],
+        ]);
+        for &row in &graphics.0[7..] {
+            assert_eq!(row, [0; 8]);
+        }
+    }
+
+    #[test]
+    fn drawing_preloaded_sprites() {
+        let mut graphics_a = GraphicsState::blank();
+        let sprite = &FONT_DATA[0..5];
+        draw_sprite_data(sprite, 4, 0, &mut graphics_a);
+        assert_eq!(graphics_a.0[0..6], [
+            [0b0000_1111, 0, 0, 0, 0, 0, 0, 0],
+            [0b0000_1001, 0, 0, 0, 0, 0, 0, 0],
+            [0b0000_1001, 0, 0, 0, 0, 0, 0, 0],
+            [0b0000_1001, 0, 0, 0, 0, 0, 0, 0],
+            [0b0000_1111, 0, 0, 0, 0, 0, 0, 0],
+            [0; 8],
+        ]);
+
+        let mut graphics_b = GraphicsState::blank();
+        let sprite = &Memory::new().0[usize::from(FONT_DATA_BASE_ADDRESS)..][..5];
+        draw_sprite_data(sprite, 4, 0, &mut graphics_b);
+        assert_eq!(graphics_a, graphics_b);
     }
 }
