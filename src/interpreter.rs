@@ -1,5 +1,7 @@
 //! The CHIP-8 interpreter.
 
+use std::sync::{Arc, Mutex};
+
 use crate::{Address, GraphicsState, Memory, RegLabel, Registers, inst::Instruction};
 
 /// The container for all the information stored in the CHIP-8 interpreter.
@@ -7,38 +9,50 @@ pub struct Chip8Interpreter {
     memory: Memory,
     regs: Registers,
     i_register: Address,
-    graphics: GraphicsState,
+    graphics: Arc<Mutex<GraphicsState>>,
     delay_timer: u8,
     sound_timer: u8,
     stack: Vec<Address>,
     /// Program Counter
     pc: Address,
     /// Are we currently waiting for a keypress? (Instruction FX0A)
-    waiting_for_keypress: bool,
+    ///
+    /// If so, what register are we going to store the keypress into?
+    waiting_for_keypress: Option<RegLabel>,
     randomness_provider: Box<dyn RandomnessProvider>,
     keyboard_provider: Box<dyn KeyboardProvider>,
-    // time_provider: Box<dyn TimeProvider>,
+    sound_provider: Box<dyn SoundProvider>,
+    time_provider: Box<dyn TimeProvider>,
+    last_tick_known: u64,
 }
 
 impl Chip8Interpreter {
     /// Initializes a new interpreter with no loaded program.
-    pub fn new<R, K>(randomness_provider: R, keyboard_provider: K) -> Self
+    pub fn new<R, K, S, T>(
+        randomness_provider: R, keyboard_provider: K,
+        sound_provider: S, time_provider: T,
+    ) -> Self
     where
         R: RandomnessProvider + 'static,
-        K: KeyboardProvider + 'static
+        K: KeyboardProvider + 'static,
+        S: SoundProvider + 'static,
+        T: TimeProvider + 'static,
     {
         Chip8Interpreter {
             memory: Memory::new(),
             regs: Registers::new(),
             i_register: Address::new(0),
-            graphics: GraphicsState::blank(),
+            graphics: Arc::new(Mutex::new(GraphicsState::blank())),
             delay_timer: 0,
             sound_timer: 0,
             stack: Vec::with_capacity(16),
             pc: Address::new(0x200),
-            waiting_for_keypress: false,
+            waiting_for_keypress: None,
             randomness_provider: Box::new(randomness_provider),
             keyboard_provider: Box::new(keyboard_provider),
+            sound_provider: Box::new(sound_provider),
+            time_provider: Box::new(time_provider),
+            last_tick_known: 0,
         }
     }
 
@@ -57,6 +71,55 @@ impl Chip8Interpreter {
         program_space.copy_from_slice(program);
     }
 
+    /// Returns a handle to the [`GraphicsState`] of this [`Chip8Interpreter`].
+    ///
+    /// This lock should be kept locked for as little time as possible! Sprite
+    /// code within the interpreter must **wait** for this Mutex to be unlocked.
+    pub fn graphics_handle(&self) -> Arc<Mutex<GraphicsState>> {
+        Arc::clone(&self.graphics)
+    }
+
+    /// Starts the interpreter. **This function does not exit.**
+    pub fn boot(&mut self) {
+        self.last_tick_known = self.time_provider.current_tick_count();
+        loop {
+            self.drive();
+        }
+    }
+
+    /// Drives the interpreter--executes instructions, processes input, etc.
+    fn drive(&mut self) {
+        if let Some(x) = self.waiting_for_keypress {
+            let pressed = self.keyboard_provider.is_any_key_pressed();
+            if pressed == 255 {
+                return;
+            }
+            self.regs[x].0 = pressed;
+            self.waiting_for_keypress = None;
+        }
+        let inst_hi = self.memory[self.pc];
+        let inst_lo = self.memory[self.pc + 1];
+        let Ok(inst) = Instruction::parse(inst_hi, inst_lo) else {
+            let n = u16::from_be_bytes([inst_hi, inst_lo]);
+            eprintln!("Unrecognized instruction {n:#06X}");
+            return;
+        };
+        self.exec_instruction(inst);
+
+        let current_tick = self.time_provider.current_tick_count();
+        if current_tick > self.last_tick_known {
+            self.last_tick_known = current_tick;
+            self.delay_timer = self.delay_timer.saturating_sub(1);
+            self.sound_timer = self.sound_timer.saturating_sub(1);
+        }
+
+        if self.sound_timer > 0 {
+            self.sound_provider.enable_sound();
+        } else {
+            self.sound_provider.disable_sound();
+        }
+    }
+
     /// Moves the program counter forward by one instruction.
     fn increment_pc(&mut self) {
         self.pc += 2;
@@ -67,12 +130,14 @@ impl Chip8Interpreter {
     ///
     /// # Panics
     /// - Panics if the stack underflows while returning from a subroutine
-    /// - Panics if a TODO instruction is executed
     #[expect(clippy::too_many_lines)]
     fn exec_instruction(&mut self, inst: Instruction) {
         self.increment_pc();
         match inst {
-            Instruction::ClearScreen => { self.graphics = GraphicsState::blank() },
+            Instruction::ClearScreen => {
+                let mut guard = self.graphics.lock().unwrap();
+                *guard = GraphicsState::blank();
+            },
             Instruction::ReturnFromSubroutine => {
                 self.pc = self.stack.pop().expect("stack underflow");
             },
@@ -217,13 +282,14 @@ impl Chip8Interpreter {
                 if pressed != 255 {
                     self.regs[x].0 = pressed;
                 } else {
-                    self.waiting_for_keypress = true;
+                    self.waiting_for_keypress = Some(x);
                 }
             },
         }
     }
 
     fn draw_sprite(&mut self, x: RegLabel, y: RegLabel, n: u8) {
+        let mut graphics = self.graphics.lock().unwrap();
         let base_x = self.regs[x].0;
         let base_y = self.regs[y].0;
         let i = usize::from(self.i_register.0);
@@ -233,7 +299,7 @@ impl Chip8Interpreter {
             let i = u8::try_from(i).unwrap();
             let x = usize::from(base_x);
             let y = usize::from(base_y + i);
-            let screen_value = &mut self.graphics.0[y][x];
+            let screen_value = &mut graphics.0[y][x];
             *screen_value ^= byte;
             if (*screen_value & byte) != 0 {
                 any_unset = true;
@@ -268,13 +334,18 @@ pub trait KeyboardProvider {
     }
 }
 
+/// A type that can provide sound to the [`Chip8Interpreter`].
+pub trait SoundProvider {
+    /// Enables sound output.
+    fn enable_sound(&mut self);
+    /// Disables sound output.
+    fn disable_sound(&mut self);
+}
+
 /// A type that can provide time to the [`Chip8Interpreter`].
 ///
 /// It processes "ticks" that are at a rate of 60 Hz.
 pub trait TimeProvider {
-    /// Sets the internal "epoch" used by this `TimeProvider` to the current moment.
-    fn set_epoch(&mut self);
-
-    /// Pauses the current thread until the next tick has occurred.
-    fn wait_until_next_tick(&mut self);
+    /// Returns the number of ticks that have passed since some arbitrary epoch.
+    fn current_tick_count(&mut self) -> u64;
 }
