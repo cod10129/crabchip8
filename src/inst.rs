@@ -1,4 +1,5 @@
 //! Instructions for CHIP-8.
+#![allow(missing_docs)]
 
 use crate::{Address, RegLabel};
 
