@@ -72,6 +72,20 @@ impl RandomnessProvider for HashRandomnessProvider {
     }
 }
 
+/// A dummy [`KeyboardProvider`] where no keys are ever pressed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
+pub struct DummyKeyboardProvider;
+
+impl KeyboardProvider for DummyKeyboardProvider {
+    fn is_key_pressed(&mut self, _: u8) -> bool {
+        false
+    }
+
+    fn is_any_key_pressed(&mut self) -> u8 {
+        0xFF
+    }
+}
+
 /// A [`SoundProvider`] that does nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct DummySoundProvider {
