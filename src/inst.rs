@@ -4,7 +4,7 @@
 use crate::{Address, RegLabel};
 
 /// A CHIP-8 instruction.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {
     /// `00E0`
     ClearScreen,

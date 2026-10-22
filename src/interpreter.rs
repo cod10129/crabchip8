@@ -107,6 +107,7 @@ impl Chip8Interpreter {
             eprintln!("Unrecognized instruction {n:#06X}");
             return;
         };
+        dbg!(inst);
         self.exec_instruction(inst);
 
         let current_tick = self.time_provider.current_tick_count();
@@ -300,11 +301,17 @@ impl Chip8Interpreter {
         let mut any_unset = false;
         for (i, &byte) in sprite_data.iter().enumerate() {
             let i = u8::try_from(i).unwrap();
-            let x = usize::from(base_x);
-            let y = usize::from(base_y + i);
-            let screen_value = &mut graphics.0[y][x];
-            *screen_value ^= byte;
-            if (*screen_value & byte) != 0 {
+            let x_bit = usize::from(base_x);
+            let y_bit = usize::from(base_y + i);
+
+            let x_byte_base = x_bit / 8;
+            let bits_into_x_byte = x_bit % 8;
+            let x_segment = &mut graphics.0[y_bit][x_byte_base..][..2];
+            let left_byte = byte >> bits_into_x_byte;
+            let right_byte = u8::unbounded_shl(byte, (8 - bits_into_x_byte).try_into().unwrap());
+            x_segment[0] ^= left_byte;
+            x_segment[1] ^= right_byte;
+            if ((x_segment[0] & left_byte) | (x_segment[1] & right_byte)) != 0 {
                 any_unset = true;
             }
         }

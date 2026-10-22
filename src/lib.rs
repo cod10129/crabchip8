@@ -176,7 +176,7 @@ impl AddAssign<u8> for Address {
 }
 
 /// The graphics state of the CHIP-8 screen (64x32 grid of bits).
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 // Row-major order.
 pub struct GraphicsState([[u8; 8]; 32]);
 
