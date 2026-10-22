@@ -94,18 +94,24 @@ impl IndexMut<RegLabel> for Registers {
     }
 }
 
-/// The 12-bit address register `I`.
+/// A 12-bit address.
 #[derive(Clone, PartialEq, Eq)]
-pub struct IRegister(u16);
+pub struct Address(u16);
 
-impl IRegister {
-    /// Instantiates the I register from an integer in the range [0, 0xFFF].
+impl Address {
+    /// Creates a new `Address` from an integer in the range [0, 0xFFF].
     ///
     /// # Panics
     /// Panics if `n > 0xFFF`.
     pub fn new(n: u16) -> Self {
-        assert!(n < 0x1000, "IRegister value {n:#X} was greater than 0xFFF");
-        IRegister(n)
+        assert!(n < 0x1000, "Address value {n:#X} was greater than 0xFFF");
+        Address(n)
+    }
+}
+
+impl fmt::Debug for Address {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#05X}", self.0)
     }
 }
 
