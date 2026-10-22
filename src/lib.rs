@@ -185,6 +185,11 @@ impl GraphicsState {
     pub const fn blank() -> GraphicsState {
         GraphicsState([[0; 8]; 32])
     }
+
+    /// Returns the graphical data.
+    pub fn data(&self) -> [[u8; 8]; 32] {
+        self.0
+    }
 }
 
 impl Default for GraphicsState {
