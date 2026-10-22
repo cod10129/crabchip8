@@ -1,0 +1,11 @@
+[package]
+name = "crabchip8"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+
+[lints]
+rust.missing_docs = "warn"
+clippy.pedantic = "warn"
+
+[dependencies]
