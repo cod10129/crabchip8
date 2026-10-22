@@ -3,7 +3,6 @@
 use crate::{Address, GraphicsState, Memory, RegLabel, Registers, inst::Instruction};
 
 /// The container for all the information stored in the CHIP-8 interpreter.
-#[derive(Clone, PartialEq, Eq)]
 pub struct Chip8Interpreter {
     memory: Memory,
     regs: Registers,
@@ -14,11 +13,20 @@ pub struct Chip8Interpreter {
     stack: Vec<Address>,
     /// Program Counter
     pc: Address,
+    /// Are we currently waiting for a keypress? (Instruction FX0A)
+    waiting: bool,
+    randomness_provider: Box<dyn RandomnessProvider>,
+    keyboard_provider: Box<dyn KeyboardProvider>,
+    // time_provider: Box<dyn TimeProvider>,
 }
 
 impl Chip8Interpreter {
     /// Initializes a new interpreter with no loaded program.
-    pub fn new() -> Chip8Interpreter {
+    pub fn new<R, K>(randomness_provider: R, keyboard_provider: K) -> Self
+    where
+        R: RandomnessProvider + 'static,
+        K: KeyboardProvider + 'static
+    {
         Chip8Interpreter {
             memory: Memory::new(),
             regs: Registers::new(),
@@ -28,6 +36,9 @@ impl Chip8Interpreter {
             sound_timer: 0,
             stack: Vec::with_capacity(16),
             pc: Address::new(0x200),
+            waiting: false,
+            randomness_provider: Box::new(randomness_provider),
+            keyboard_provider: Box::new(keyboard_provider),
         }
     }
 
@@ -183,10 +194,24 @@ impl Chip8Interpreter {
                 }
                 self.i_register += x.as_number() + 1;
             },
-            Instruction::RandomWithMask { .. }
-                | Instruction::SkipIfKeyPressed { .. }
-                | Instruction::SkipIfKeyNotPressed { .. }
-                | Instruction::WaitForKeypress { .. } => todo!()
+            Instruction::RandomWithMask { x, nn } => {
+                self.regs[x].0 = self.randomness_provider.random() & nn;
+            },
+            Instruction::SkipIfKeyPressed { x } => {
+                let key = self.regs[x].0 & 0xF;
+                let is_pressed = self.keyboard_provider.is_key_pressed(key);
+                if is_pressed {
+                    self.increment_pc();
+                }
+            },
+            Instruction::SkipIfKeyNotPressed { x } => {
+                let key = self.regs[x].0 & 0xF;
+                let is_pressed = self.keyboard_provider.is_key_pressed(key);
+                if !is_pressed {
+                    self.increment_pc();
+                }
+            },
+            Instruction::WaitForKeypress { .. } => todo!()
         }
     }
 
@@ -210,8 +235,27 @@ impl Chip8Interpreter {
     }
 }
 
-impl Default for Chip8Interpreter {
-    fn default() -> Self {
-        Chip8Interpreter::new()
-    }
+/// A type that can provide randomness to the [`Chip8Interpreter`].
+pub trait RandomnessProvider {
+    /// Generates a random number from 0 to 255.
+    fn random(&mut self) -> u8;
+}
+
+/// A type that can provide keyboard inputs to the [`Chip8Interpreter`].
+pub trait KeyboardProvider {
+    /// Is the key specified by `key` currently pressed?
+    ///
+    /// `key` must be less than 16/`0x10`.
+    fn is_key_pressed(&mut self, key: u8) -> bool;
+}
+
+/// A type that can provide time to the [`Chip8Interpreter`].
+///
+/// It processes "ticks" that are at a rate of 60 Hz.
+pub trait TimeProvider {
+    /// Sets the internal "epoch" used by this `TimeProvider` to the current moment.
+    fn set_epoch(&mut self);
+
+    /// Pauses the current thread until the next tick has occurred.
+    fn wait_until_next_tick(&mut self);
 }
