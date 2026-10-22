@@ -19,10 +19,10 @@ pub struct Chip8Interpreter {
     ///
     /// If so, what register are we going to store the keypress into?
     waiting_for_keypress: Option<RegLabel>,
-    randomness_provider: Box<dyn RandomnessProvider>,
-    keyboard_provider: Box<dyn KeyboardProvider>,
-    sound_provider: Box<dyn SoundProvider>,
-    time_provider: Box<dyn TimeProvider>,
+    randomness_provider: Box<dyn RandomnessProvider + Send + Sync>,
+    keyboard_provider: Box<dyn KeyboardProvider + Send + Sync>,
+    sound_provider: Box<dyn SoundProvider + Send + Sync>,
+    time_provider: Box<dyn TimeProvider + Send + Sync>,
     last_tick_known: u64,
 }
 
@@ -33,10 +33,10 @@ impl Chip8Interpreter {
         sound_provider: S, time_provider: T,
     ) -> Self
     where
-        R: RandomnessProvider + 'static,
-        K: KeyboardProvider + 'static,
-        S: SoundProvider + 'static,
-        T: TimeProvider + 'static,
+        R: RandomnessProvider + Send + Sync + 'static,
+        K: KeyboardProvider + Send + Sync + 'static,
+        S: SoundProvider + Send + Sync + 'static,
+        T: TimeProvider + Send + Sync + 'static,
     {
         Chip8Interpreter {
             memory: Memory::new(),
