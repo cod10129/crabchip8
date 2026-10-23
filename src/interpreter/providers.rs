@@ -1,6 +1,8 @@
 //! Providers of various resources to the `Chip8Interpreter`.
 
-use std::{hash, time::Instant};
+use std::time::SystemTime;
+
+use fastrand::Rng;
 
 #[cfg(doc)]
 use super::Chip8Interpreter;
@@ -46,29 +48,27 @@ pub trait TimeProvider {
     fn current_tick_count(&mut self) -> u64;
 }
 
-/// A [`RandomnessProvider`] that uses [`std::hash::RandomState`] as a hacky
-/// source for randomness.
-#[derive(Debug, Default)]
-pub struct HashRandomnessProvider {
-    state: hash::RandomState,
-    hash: u64,
+/// A [`RandomnessProvider`] that uses [`fastrand::Rng`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FastrandRandomnessProvider {
+    rng: Rng,
 }
 
-impl HashRandomnessProvider {
-    /// Creates a new `HashRandomnessProvider` with a random state.
+impl FastrandRandomnessProvider {
+    /// Creates a new `FastrandRandomnessProvider` with a random seed.
     pub fn new() -> Self {
-        HashRandomnessProvider {
-            state: hash::RandomState::new(),
-            hash: 0xF2AA_B555,
-        }
+        FastrandRandomnessProvider { rng: Rng::new() }
+    }
+
+    /// Creates a new `FastrandRandomnessProvider` with a given seed.
+    pub fn with_seed(seed: u64) -> Self {
+        FastrandRandomnessProvider { rng: Rng::with_seed(seed) }
     }
 }
 
-impl RandomnessProvider for HashRandomnessProvider {
-    #[allow(clippy::cast_possible_truncation)]
+impl RandomnessProvider for FastrandRandomnessProvider {
     fn random(&mut self) -> u8 {
-        self.hash = hash::BuildHasher::hash_one(&self.state, self.hash);
-        self.hash as u8
+        self.rng.u8(..)
     }
 }
 
@@ -105,24 +105,16 @@ impl SoundProvider for DummySoundProvider {
     fn disable_sound(&mut self) { self.sound_enabled = false }
 }
 
-/// A [`TimeProvider`] that uses [`std::time::Instant`].
+/// A [`TimeProvider`] that uses [`std::time::SystemTime`] and seconds since
+/// the Unix epoch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StdTimeProvider {
-    epoch: Instant,
-}
-
-impl StdTimeProvider {
-    /// Creates a new `StdTimeProvider` with its epoch set to the current moment.
-    #[expect(clippy::new_without_default)]
-    pub fn new() -> Self {
-        StdTimeProvider { epoch: Instant::now() }
-    }
-}
+pub struct StdTimeProvider;
 
 impl TimeProvider for StdTimeProvider {
     fn current_tick_count(&mut self) -> u64 {
         const NANOS_PER_TICK: u64 = 1_000_000_000 / 60;
-        let dur = Instant::now().duration_since(self.epoch);
+        let dur = SystemTime::UNIX_EPOCH.elapsed()
+            .expect("the current time is after 1/1/1970");
         (dur.as_secs() * 60) + (u64::from(dur.subsec_nanos()) / NANOS_PER_TICK)
     }
 }

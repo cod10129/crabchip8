@@ -298,7 +298,7 @@ impl Chip8Interpreter {
         let base_y = self.regs[y].0;
         let i = usize::from(self.i_register.0);
         let sprite_data = &self.memory.0[i..][..usize::from(n)];
-        eprint!("Drawing sprite data: ");
+        eprint!("Drawing sprite data from address {:?}: ", self.i_register);
         for byte in sprite_data {
             eprint!("{byte:X} ");
         }

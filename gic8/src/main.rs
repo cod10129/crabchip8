@@ -106,10 +106,10 @@ fn draw(graphics: &GraphicsState, window: &Window, surface: &mut WindowSurface) 
 fn main() {
     let program = std::fs::read("program.ch8").unwrap();
     let mut interpreter = Chip8Interpreter::new(
-        providers::HashRandomnessProvider::new(),
+        providers::FastrandRandomnessProvider::new(),
         providers::DummyKeyboardProvider,
         providers::DummySoundProvider::new(),
-        providers::StdTimeProvider::new(),
+        providers::StdTimeProvider,
     );
     interpreter.load_program(&program);
     let graphics = interpreter.graphics_handle();

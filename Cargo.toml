@@ -1,6 +1,6 @@
 [package]
 name = "crabchip8"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.87"
 
@@ -13,6 +13,7 @@ clippy.missing_errors_doc = "allow"
 clippy.map_unwrap_or = "allow"
 
 [dependencies]
+fastrand = "2.5.0"
 
 [workspace]
 members = ["gic8"]
