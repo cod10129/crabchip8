@@ -1,6 +1,9 @@
 //! Providers of various resources to the `Chip8Interpreter`.
 
-use std::time::SystemTime;
+use std::{
+    ops::Deref,
+    time::SystemTime,
+};
 
 use fastrand::Rng;
 
@@ -18,17 +21,22 @@ pub trait KeyboardProvider {
     /// Is the key specified by `key` currently pressed?
     ///
     /// `key` must be less than 16/`0x10`.
-    fn is_key_pressed(&mut self, key: u8) -> bool;
+    fn is_key_pressed(&self, key: u8) -> bool;
 
     /// Returns the corresponding digit `0-F` if a key is currently pressed,
-    /// and `0xFF` otherwise.
-    fn is_any_key_pressed(&mut self) -> u8 {
-        for n in 0..16 {
-            if self.is_key_pressed(n) {
-                return n;
-            }
-        }
-        0xFF
+    /// and `None` otherwise.
+    fn is_any_key_pressed(&self) -> Option<u8> {
+        (0..16).find(|&key| self.is_key_pressed(key))
+    }
+}
+
+impl<K: KeyboardProvider, P: Deref<Target = K>> KeyboardProvider for P {
+    fn is_key_pressed(&self, key: u8) -> bool {
+        K::is_key_pressed(&**self, key)
+    }
+
+    fn is_any_key_pressed(&self) -> Option<u8> {
+        K::is_any_key_pressed(&**self)
     }
 }
 
@@ -72,17 +80,23 @@ impl RandomnessProvider for FastrandRandomnessProvider {
     }
 }
 
+impl Default for FastrandRandomnessProvider {
+    fn default() -> Self {
+        FastrandRandomnessProvider::new()
+    }
+}
+
 /// A dummy [`KeyboardProvider`] where no keys are ever pressed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct DummyKeyboardProvider;
 
 impl KeyboardProvider for DummyKeyboardProvider {
-    fn is_key_pressed(&mut self, _: u8) -> bool {
+    fn is_key_pressed(&self, _: u8) -> bool {
         false
     }
 
-    fn is_any_key_pressed(&mut self) -> u8 {
-        0xFF
+    fn is_any_key_pressed(&self) -> Option<u8> {
+        None
     }
 }
 

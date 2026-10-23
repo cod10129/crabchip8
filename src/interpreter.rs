@@ -94,11 +94,12 @@ impl Chip8Interpreter {
     fn drive(&mut self) {
         if let Some(x) = self.waiting_for_keypress {
             let pressed = self.keyboard_provider.is_any_key_pressed();
-            if pressed == 255 {
+            if let Some(pressed) = pressed {
+                self.regs[x].0 = pressed;
+                self.waiting_for_keypress = None;
+            } else {
                 return;
             }
-            self.regs[x].0 = pressed;
-            self.waiting_for_keypress = None;
         }
         let inst_hi = self.memory[self.pc];
         let inst_lo = self.memory[self.pc + 1];
@@ -282,8 +283,7 @@ impl Chip8Interpreter {
             },
             Instruction::WaitForKeypress { x } => {
                 let pressed = self.keyboard_provider.is_any_key_pressed();
-                #[expect(clippy::if_not_else)]
-                if pressed != 255 {
+                if let Some(pressed) = pressed {
                     self.regs[x].0 = pressed;
                 } else {
                     self.waiting_for_keypress = Some(x);
