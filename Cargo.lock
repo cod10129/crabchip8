@@ -4,4 +4,11 @@ version = 4
 
 [[package]]
 name = "crabchip8"
-version = "0.0.0"
+version = "0.1.0"
+
+[[package]]
+name = "gic8"
+version = "0.1.0"
+dependencies = [
+ "crabchip8",
+]

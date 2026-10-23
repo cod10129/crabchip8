@@ -1,4 +1,6 @@
-#![allow(missing_docs)]
+//! GIC8 (Graphical Interpreter for Chip-8).
+//!
+//! Brought to you by [`crabchip8`].
 
 use crabchip8::{
     GraphicsState,
