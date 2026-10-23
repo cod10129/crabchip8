@@ -18,12 +18,12 @@ fn main() {
     std::thread::spawn(move || {
         interpreter.boot();
     });
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    std::thread::sleep(std::time::Duration::from_millis(200));
     let graphics = GraphicsState::clone(&graphics.lock().unwrap());
     for row in graphics.data() {
         for byte in row {
             for i in 0..8 {
-                let bit = (byte >> i) & 0b1;
+                let bit = (byte >> (7 - i)) & 0b1;
                 if bit > 0 {
                     print!("⠿");
                 } else {
