@@ -6,3 +6,5 @@ rust-version = "1.87"
 
 [dependencies]
 crabchip8 = { path = "../" }
+winit = "0.30"
+softbuffer = "0.4.8"
