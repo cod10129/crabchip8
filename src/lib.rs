@@ -190,6 +190,26 @@ impl GraphicsState {
     pub fn data(&self) -> [[u8; 8]; 32] {
         self.0
     }
+
+    /// Returns an iterator over the pixels of each row.
+    #[expect(clippy::missing_panics_doc, reason = "can't actually panic")]
+    pub fn pixel_iterator(&self) -> impl Iterator<Item = [bool; 64]> {
+        self.0.into_iter().map(|row| {
+            let v = row.map(|byte|
+                [
+                    bool::try_from((byte >> 7) & 0b1).unwrap(),
+                    bool::try_from((byte >> 6) & 0b1).unwrap(),
+                    bool::try_from((byte >> 5) & 0b1).unwrap(),
+                    bool::try_from((byte >> 4) & 0b1).unwrap(),
+                    bool::try_from((byte >> 3) & 0b1).unwrap(),
+                    bool::try_from((byte >> 2) & 0b1).unwrap(),
+                    bool::try_from((byte >> 1) & 0b1).unwrap(),
+                    bool::try_from( byte       & 0b1).unwrap(),
+                ])
+                .concat();
+            <[bool; 64]>::try_from(v).unwrap()
+        })
+    }
 }
 
 impl Default for GraphicsState {
