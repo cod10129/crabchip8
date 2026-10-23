@@ -17,10 +17,14 @@ use winit::{
 };
 use softbuffer::Surface;
 
+mod keyboard;
+use keyboard::KeyTracker;
+
 type WindowSurface = Surface<Arc<Window>, Arc<Window>>;
 
 struct App {
     c8_graphics: Arc<Mutex<GraphicsState>>,
+    key_tracker: Arc<KeyTracker>,
     win: Option<WindowState>,
 }
 
@@ -65,6 +69,11 @@ impl ApplicationHandler for App {
                 win.window.request_redraw();
             },
             WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::KeyboardInput {
+                event, device_id: _, is_synthetic: _,
+            } => {
+                self.key_tracker.process_event(event);
+            }
             _ => {},
         }
     }
@@ -105,9 +114,10 @@ fn draw(graphics: &GraphicsState, window: &Window, surface: &mut WindowSurface) 
 
 fn main() {
     let program = std::fs::read("program.ch8").unwrap();
+    let key_tracker = Arc::new(KeyTracker::new());
     let mut interpreter = Chip8Interpreter::new(
         providers::FastrandRandomnessProvider::new(),
-        providers::DummyKeyboardProvider,
+        Arc::clone(&key_tracker),
         providers::DummySoundProvider::new(),
         providers::StdTimeProvider,
     );
@@ -118,6 +128,7 @@ fn main() {
     });
     let mut app = App {
         c8_graphics: graphics,
+        key_tracker,
         win: None,
     };
 
