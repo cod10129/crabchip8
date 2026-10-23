@@ -20,6 +20,10 @@ fn main() {
     });
     std::thread::sleep(std::time::Duration::from_millis(200));
     let graphics = GraphicsState::clone(&graphics.lock().unwrap());
+    debug_print_graphics(&graphics);
+}
+
+fn debug_print_graphics(graphics: &GraphicsState) {
     for row in graphics.data() {
         for byte in row {
             for i in 0..8 {
