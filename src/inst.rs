@@ -84,7 +84,7 @@ impl Instruction {
         let lo_hi = lo >> 4;
         let lo_lo = lo & 0b1111;
 
-        let nnn = Address::new(u16::from_be_bytes([hi, lo]) & 0x3F);
+        let nnn = Address::new(u16::from_be_bytes([hi, lo]) & 0x0FFF);
         let nn = lo;
         let x = RegLabel::new(hi_lo);
         let y = RegLabel::new(lo_hi);

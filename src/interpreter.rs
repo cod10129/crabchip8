@@ -107,7 +107,7 @@ impl Chip8Interpreter {
             eprintln!("Unrecognized instruction {n:#06X}");
             return;
         };
-        dbg!(inst);
+        eprintln!("[at address {:?}] Instruction {inst:?}", self.pc);
         self.exec_instruction(inst);
 
         let current_tick = self.time_provider.current_tick_count();
@@ -320,12 +320,18 @@ fn draw_sprite_data(
 
         let x_byte_base = x_bit / 8;
         let bits_into_x_byte = x_bit % 8;
-        let x_segment = &mut graphics.0[y_bit][x_byte_base..][..2];
+        let x_segment = &mut graphics.0[y_bit][x_byte_base..];
         let left_byte = byte >> bits_into_x_byte;
         let right_byte = u8::unbounded_shl(byte, (8 - bits_into_x_byte).try_into().unwrap());
         x_segment[0] ^= left_byte;
-        x_segment[1] ^= right_byte;
-        if ((x_segment[0] & left_byte) | (x_segment[1] & right_byte)) != 0 {
+        // x_byte_base could be 7, meaning that the "right byte" is off the screen
+        // If so, ignore it entirely
+        if let Some(right_byte_place) = x_segment.get_mut(1) {
+            *right_byte_place ^= right_byte;
+        }
+        let left_unset = x_segment[0] & left_byte;
+        let right_unset = x_segment.get(1).map(|b| *b & right_byte).unwrap_or(0);
+        if (left_unset | right_unset) != 0 {
             any_unset = true;
         }
     }

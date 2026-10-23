@@ -10,5 +10,6 @@ clippy.pedantic = { level = "warn", priority = -1 }
 clippy.must_use_candidate = "allow"
 clippy.return_self_not_must_use = "allow"
 clippy.missing_errors_doc = "allow"
+clippy.map_unwrap_or = "allow"
 
 [dependencies]
