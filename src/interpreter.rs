@@ -1,6 +1,6 @@
 //! The CHIP-8 interpreter.
 
-use std::sync::{Arc, Mutex};
+use std::{io::Write, sync::{Arc, Mutex}};
 
 use crate::{Address, GraphicsState, Memory, RegLabel, Registers, inst::Instruction};
 
@@ -26,20 +26,22 @@ pub struct Chip8Interpreter {
     keyboard_provider: Box<dyn KeyboardProvider + Send + Sync>,
     sound_provider: Box<dyn SoundProvider + Send + Sync>,
     time_provider: Box<dyn TimeProvider + Send + Sync>,
+    log_target: Box<dyn Write + Send + Sync>,
     last_tick_known: u64,
 }
 
 impl Chip8Interpreter {
     /// Initializes a new interpreter with no loaded program.
-    pub fn new<R, K, S, T>(
+    pub fn new<R, K, S, T, W>(
         randomness_provider: R, keyboard_provider: K,
-        sound_provider: S, time_provider: T,
+        sound_provider: S, time_provider: T, log_target: W,
     ) -> Self
     where
         R: RandomnessProvider + Send + Sync + 'static,
         K: KeyboardProvider + Send + Sync + 'static,
         S: SoundProvider + Send + Sync + 'static,
         T: TimeProvider + Send + Sync + 'static,
+        W: Write + Send + Sync + 'static,
     {
         Chip8Interpreter {
             memory: Memory::new(),
@@ -55,6 +57,7 @@ impl Chip8Interpreter {
             keyboard_provider: Box::new(keyboard_provider),
             sound_provider: Box::new(sound_provider),
             time_provider: Box::new(time_provider),
+            log_target: Box::new(log_target),
             last_tick_known: 0,
         }
     }
@@ -103,12 +106,13 @@ impl Chip8Interpreter {
         }
         let inst_hi = self.memory[self.pc];
         let inst_lo = self.memory[self.pc + 1];
+        _ = write!(self.log_target, "[at address {:?}] ", self.pc);
         let Ok(inst) = Instruction::parse(inst_hi, inst_lo) else {
             let n = u16::from_be_bytes([inst_hi, inst_lo]);
-            eprintln!("Unrecognized instruction {n:#06X}");
+            let _ = writeln!(self.log_target, "Unrecognized instruction {n:#06X}");
             return;
         };
-        eprintln!("[at address {:?}] Instruction {inst:?}", self.pc);
+        _ = writeln!(self.log_target, "Instruction {inst:?}");
         self.exec_instruction(inst);
 
         let current_tick = self.time_provider.current_tick_count();
@@ -123,6 +127,8 @@ impl Chip8Interpreter {
         } else {
             self.sound_provider.disable_sound();
         }
+
+        _ = self.log_target.flush();
     }
 
     /// Moves the program counter forward by one instruction.
@@ -298,11 +304,15 @@ impl Chip8Interpreter {
         let base_y = self.regs[y].0;
         let i = usize::from(self.i_register.0);
         let sprite_data = &self.memory.0[i..][..usize::from(n)];
-        eprint!("Drawing sprite data from address {:?}: ", self.i_register);
+        _ = write!(
+            self.log_target,
+            "Drawing sprite data from address {:?}: ",
+            self.i_register,
+        );
         for byte in sprite_data {
-            eprint!("{byte:X} ");
+            _ = write!(self.log_target, "{byte:X} ");
         }
-        eprintln!();
+        _ = writeln!(self.log_target);
         let res = draw_sprite_data(sprite_data, base_x, base_y, &mut graphics);
         self.regs[RegLabel::VF].0 = u8::from(res);
     }

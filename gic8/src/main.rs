@@ -2,7 +2,12 @@
 //!
 //! Brought to you by [`crabchip8`].
 
-use std::{num::NonZeroU32, sync::{Arc, Mutex}};
+use std::{
+    io::BufWriter,
+    fs::{self, File},
+    num::NonZeroU32,
+    sync::{Arc, Mutex},
+};
 
 use crabchip8::{
     GraphicsState,
@@ -113,13 +118,15 @@ fn draw(graphics: &GraphicsState, window: &Window, surface: &mut WindowSurface) 
 }
 
 fn main() {
-    let program = std::fs::read("program.ch8").unwrap();
+    let program = fs::read("program.ch8").unwrap();
+    let log_file = File::create("gic8.debug.log").unwrap();
     let key_tracker = Arc::new(KeyTracker::new());
     let mut interpreter = Chip8Interpreter::new(
         providers::FastrandRandomnessProvider::new(),
         Arc::clone(&key_tracker),
         providers::DummySoundProvider::new(),
         providers::StdTimeProvider,
+        BufWriter::new(log_file),
     );
     interpreter.load_program(&program);
     let graphics = interpreter.graphics_handle();
