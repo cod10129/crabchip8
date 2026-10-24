@@ -1,6 +1,6 @@
 //! A CHIP-8 emulator.
 
-use std::{fmt, ops::{Add, AddAssign, Index, IndexMut}};
+use std::{fmt, ops::{Add, AddAssign, Index, IndexMut, Sub, SubAssign}};
 
 pub mod inst;
 pub mod interpreter;
@@ -175,6 +175,25 @@ impl AddAssign<u8> for Address {
     }
 }
 
+/// Subtracts a `u8` from an `Address`, wrapping from `0x000` to `0xFFF`.
+impl Sub<u8> for Address {
+    type Output = Address;
+
+    fn sub(self, rhs: u8) -> Self {
+        let (mut difference, overflow) = self.0.overflowing_sub(u16::from(rhs));
+        if overflow {
+            difference -= 0xF000;
+        }
+        Self(difference)
+    }
+}
+
+impl SubAssign<u8> for Address {
+    fn sub_assign(&mut self, rhs: u8) {
+        *self = *self - rhs;
+    }
+}
+
 /// The graphics state of the CHIP-8 screen (64x32 grid of bits).
 #[derive(Debug, Clone, PartialEq, Eq)]
 // Row-major order.
@@ -215,5 +234,17 @@ impl GraphicsState {
 impl Default for GraphicsState {
     fn default() -> Self {
         GraphicsState::blank()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Address;
+
+    #[test]
+    fn address_subtraction() {
+        let addr = Address::new(0x010);
+        assert_eq!(addr - 0x0A, Address::new(0x006));
+        assert_eq!(addr - 0x11, Address::new(0xFFF));
     }
 }
