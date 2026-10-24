@@ -15,7 +15,11 @@ pub struct Chip8Interpreter {
     graphics: Arc<Mutex<GraphicsState>>,
     delay_timer: u8,
     sound_timer: u8,
-    stack: Vec<Address>,
+    /// The pointer to the top of the stack (which pushes descendingly).
+    ///
+    /// The "intended" stack space is `0xFF`-`0xE0`, but it can theoretically
+    /// go all the way to `0x00` and wrap back around (to `0xFF`).
+    stack_pointer: Address,
     /// Program Counter
     pc: Address,
     /// Are we currently waiting for a keypress? (Instruction FX0A)
@@ -50,7 +54,7 @@ impl Chip8Interpreter {
             graphics: Arc::new(Mutex::new(GraphicsState::blank())),
             delay_timer: 0,
             sound_timer: 0,
-            stack: Vec::with_capacity(16),
+            stack_pointer: Address::new(0xFF),
             pc: Address::new(0x200),
             waiting_for_keypress: None,
             randomness_provider: Box::new(randomness_provider),
@@ -138,9 +142,6 @@ impl Chip8Interpreter {
 
     /// Executes one instruction on the interpreter, including moving the
     /// program counter.
-    ///
-    /// # Panics
-    /// - Panics if the stack underflows while returning from a subroutine
     #[expect(clippy::too_many_lines)]
     fn exec_instruction(&mut self, inst: Instruction) {
         self.increment_pc();
@@ -150,11 +151,17 @@ impl Chip8Interpreter {
                 *guard = GraphicsState::blank();
             },
             Instruction::ReturnFromSubroutine => {
-                self.pc = self.stack.pop().expect("stack underflow");
+                self.stack_pointer += 2;
+                let msb = self.memory[self.stack_pointer - 1];
+                let lsb = self.memory[self.stack_pointer];
+                self.pc.0 = u16::from_be_bytes([msb, lsb]) & 0x0FFF;
             },
             Instruction::Jump { nnn } => { self.pc = nnn },
             Instruction::ExecuteSubroutine { nnn } => {
-                self.stack.push(self.pc);
+                let [msb, lsb] = self.pc.0.to_be_bytes();
+                self.memory[self.stack_pointer - 1] = msb;
+                self.memory[self.stack_pointer] = lsb;
+                self.stack_pointer -= 2;
                 self.pc = nnn;
             },
             Instruction::SkipIfEqual { x, nn } => {
