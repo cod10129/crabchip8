@@ -110,10 +110,10 @@ impl Chip8Interpreter {
         }
         let inst_hi = self.memory[self.pc];
         let inst_lo = self.memory[self.pc + 1];
-        _ = write!(self.log_target, "[at address {:?}] ", self.pc);
+        _ = write!(self.log_target, "[@{:?}] ", self.pc);
         let Ok(inst) = Instruction::parse(inst_hi, inst_lo) else {
             let n = u16::from_be_bytes([inst_hi, inst_lo]);
-            let _ = writeln!(self.log_target, "Unrecognized instruction {n:#06X}");
+            _ = writeln!(self.log_target, "Unrecognized instruction {n:#06X}");
             self.increment_pc();
             return;
         };
@@ -339,16 +339,20 @@ fn draw_sprite_data(
         let x_byte_base = x_bit / 8;
         let bits_into_x_byte = x_bit % 8;
         let x_segment = &mut graphics.0[y_bit][x_byte_base..];
+        let (target1, trailing) = x_segment.split_first_mut().unwrap();
+        let target2 = trailing.get_mut(0);
+
         let left_byte = byte >> bits_into_x_byte;
         let right_byte = u8::unbounded_shl(byte, (8 - bits_into_x_byte).try_into().unwrap());
-        x_segment[0] ^= left_byte;
+        let left_unset = *target1 & left_byte;
+        let right_unset = target2.as_ref().map(|b| **b & right_byte).unwrap_or(0);
+
+        *target1 ^= left_byte;
         // x_byte_base could be 7, meaning that the "right byte" is off the screen
         // If so, ignore it entirely
-        if let Some(right_byte_place) = x_segment.get_mut(1) {
+        if let Some(right_byte_place) = target2 {
             *right_byte_place ^= right_byte;
         }
-        let left_unset = x_segment[0] & left_byte;
-        let right_unset = x_segment.get(1).map(|b| *b & right_byte).unwrap_or(0);
         if (left_unset | right_unset) != 0 {
             any_unset = true;
         }
@@ -371,7 +375,8 @@ mod tests {
     #[test]
     fn drawing_on_byte_lines() {
         let mut graphics = GraphicsState::blank();
-        draw_sprite_data(&SAMPLE_SPRITE, 8, 2, &mut graphics);
+        let res = draw_sprite_data(&SAMPLE_SPRITE, 8, 2, &mut graphics);
+        assert!(!res);
         assert_eq!(graphics.0[0..7], [
             [0; 8],
             [0; 8],
@@ -389,7 +394,8 @@ mod tests {
     #[test]
     fn drawing_between_lines() {
         let mut graphics = GraphicsState::blank();
-        draw_sprite_data(&SAMPLE_SPRITE, 10, 1, &mut graphics);
+        let res = draw_sprite_data(&SAMPLE_SPRITE, 10, 1, &mut graphics);
+        assert!(!res);
         assert_eq!(graphics.0[0..7], [
             [0; 8],
             [0, 0b00_110000, 0b11_000000, 0, 0, 0, 0, 0],
@@ -408,7 +414,8 @@ mod tests {
     fn drawing_preloaded_sprites() {
         let mut graphics_a = GraphicsState::blank();
         let sprite = &FONT_DATA[0..5];
-        draw_sprite_data(sprite, 4, 0, &mut graphics_a);
+        let res = draw_sprite_data(sprite, 4, 0, &mut graphics_a);
+        assert!(!res);
         assert_eq!(graphics_a.0[0..6], [
             [0b0000_1111, 0, 0, 0, 0, 0, 0, 0],
             [0b0000_1001, 0, 0, 0, 0, 0, 0, 0],
@@ -420,7 +427,29 @@ mod tests {
 
         let mut graphics_b = GraphicsState::blank();
         let sprite = &Memory::new().0[usize::from(FONT_DATA_BASE_ADDRESS)..][..5];
-        draw_sprite_data(sprite, 4, 0, &mut graphics_b);
+        let res = draw_sprite_data(sprite, 4, 0, &mut graphics_b);
+        assert!(!res);
         assert_eq!(graphics_a, graphics_b);
+    }
+
+    #[test]
+    fn unsetting_bits() {
+        let mut graphics = GraphicsState::blank();
+        for row in &mut graphics.0[0..3] {
+            *row = [255; 8];
+        }
+        let res = draw_sprite_data(&SAMPLE_SPRITE, 4, 1, &mut graphics);
+        assert!(res);
+        assert_eq!(graphics.0[0..6], [
+            [255; 8],
+            [0b_1111_0011, 0b_1100_1111, 255, 255, 255, 255, 255, 255],
+            [0b_1111_1001, 0b_1001_1111, 255, 255, 255, 255, 255, 255],
+            [0b_0000_0011, 0b_1100_0000, 0, 0, 0, 0, 0, 0],
+            [0b_0000_0001, 0b_1000_0000, 0, 0, 0, 0, 0, 0],
+            [0; 8],
+        ]);
+        for &row in &graphics.0[6..] {
+            assert_eq!(row, [0; 8]);
+        }
     }
 }
