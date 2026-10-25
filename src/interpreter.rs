@@ -114,6 +114,7 @@ impl Chip8Interpreter {
         let Ok(inst) = Instruction::parse(inst_hi, inst_lo) else {
             let n = u16::from_be_bytes([inst_hi, inst_lo]);
             let _ = writeln!(self.log_target, "Unrecognized instruction {n:#06X}");
+            self.increment_pc();
             return;
         };
         _ = writeln!(self.log_target, "Instruction {inst:?}");

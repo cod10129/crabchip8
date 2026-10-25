@@ -164,14 +164,16 @@ impl fmt::Debug for Address {
 impl Add<u8> for Address {
     type Output = Address;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: u8) -> Self {
-        Self(self.0.wrapping_add(u16::from(rhs)))
+        // Bitwise AND here to wrap from 0xFFF to 0x000
+        Self(self.0.wrapping_add(u16::from(rhs)) & 0xFFF)
     }
 }
 
 impl AddAssign<u8> for Address {
     fn add_assign(&mut self, rhs: u8) {
-        self.0 = self.0.wrapping_add(u16::from(rhs));
+        *self = *self + rhs;
     }
 }
 
@@ -240,6 +242,13 @@ impl Default for GraphicsState {
 #[cfg(test)]
 mod tests {
     use super::Address;
+
+    #[test]
+    fn address_addition() {
+        let addr = Address::new(0xFF1);
+        assert_eq!(addr + 0x0D, Address::new(0xFFE));
+        assert_eq!(addr + 0x16, Address::new(0x007));
+    }
 
     #[test]
     fn address_subtraction() {
