@@ -1,9 +1,14 @@
-//! A CHIP-8 emulator.
+//! crabchip8: a CHIP-8 emulator.
 
 use std::{fmt, ops::{Add, AddAssign, Index, IndexMut, Sub, SubAssign}};
 
 pub mod inst;
 pub mod interpreter;
+
+/// The current version of `crabchip8`.
+///
+/// (Primarily used for `gic8 -V`'s output.)
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Technical-Reference#fonts
 const FONT_DATA: [u8; 0x50] = [

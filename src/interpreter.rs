@@ -318,7 +318,7 @@ impl Chip8Interpreter {
             self.i_register,
         );
         for byte in sprite_data {
-            _ = write!(self.log_target, "{byte:X} ");
+            _ = write!(self.log_target, "{byte:02X} ");
         }
         _ = writeln!(self.log_target);
         let res = draw_sprite_data(sprite_data, base_x, base_y, &mut graphics);
