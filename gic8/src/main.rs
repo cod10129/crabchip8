@@ -3,7 +3,7 @@
 //! Brought to you by [`crabchip8`].
 
 use std::{
-    io::BufWriter,
+    io::{self, BufWriter},
     fs::{self, File},
     num::NonZeroU32,
     sync::{Arc, Mutex},
@@ -117,16 +117,47 @@ fn draw(graphics: &GraphicsState, window: &Window, surface: &mut WindowSurface) 
     buffer.present().expect("failed presenting buffer");
 }
 
+fn print_version_string() {
+    println!(
+        "GIC8 {} (using crabchip8 {})",
+        env!("CARGO_PKG_VERSION"),
+        crabchip8::VERSION,
+    );
+}
+
 fn main() {
-    let program = fs::read("program.ch8").unwrap();
-    let log_file = File::create("gic8.debug.log").unwrap();
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let args: Vec<&str> = args.iter().map(|s| &**s).collect();
+    if args.contains(&"-V") || args.contains(&"--version") {
+        print_version_string();
+        return;
+    }
+    if args.contains(&"-h") || args.contains(&"--help") {
+        print_help_message();
+        return;
+    }
+    let debug = args.contains(&"-d") || args.contains(&"--debug");
+    let log_target: Box<dyn io::Write + Send + Sync> = if debug {
+        Box::new(BufWriter::new(File::create("gic8.debug.log").unwrap()))
+    } else {
+        Box::new(io::sink())
+    };
+
+    let potential_match = args.into_iter()
+        .find(|s| !s.starts_with('-'));
+    let Some(file_path) = potential_match else {
+        println!("A file path is required (see `gic8 --help` for more information)");
+        return;
+    };
+
+    let program = fs::read(file_path).unwrap();
     let key_tracker = Arc::new(KeyTracker::new());
     let mut interpreter = Chip8Interpreter::new(
         providers::FastrandRandomnessProvider::new(),
         Arc::clone(&key_tracker),
         providers::DummySoundProvider::new(),
         providers::StdTimeProvider,
-        BufWriter::new(log_file),
+        log_target,
     );
     interpreter.load_program(&program);
     let graphics = interpreter.graphics_handle();
@@ -141,21 +172,18 @@ fn main() {
 
     let event_loop = EventLoop::new().expect("failed to construct event loop");
     let _ = event_loop.run_app(&mut app);
-    // std::thread::sleep(std::time::Duration::from_millis(200));
-    // let graphics = GraphicsState::clone(&graphics.lock().unwrap());
-    // debug_print_graphics(&graphics);
 }
 
-#[expect(dead_code)]
-fn debug_print_graphics(graphics: &GraphicsState) {
-    for row in graphics.pixel_iterator() {
-        for pixel in row {
-            if pixel {
-                print!("⠿");
-            } else {
-                print!(" ");
-            }
-        }
-        println!()
-    }
+fn print_help_message() {
+    print_version_string();
+    println!("Usage: gic8 [FLAGS] [program]");
+    println!();
+    println!("FLAGS:");
+    println!("    -d, --debug     Writes debug logs to gic8.debug.log in the current working directory.
+                    WARNING: Generates extremely large files (500MB+)");
+    println!("    -h, --help      Prints help information");
+    println!("    -V, --version   Prints version information");
+    println!();
+    println!("ARGS:");
+    println!("    <program>   The path to the CHIP-8 program to be executed.");
 }
