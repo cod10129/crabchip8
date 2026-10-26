@@ -2,6 +2,7 @@
 name = "gic8"
 version = "0.3.0"
 edition = "2024"
+license = "MPL-2.0"
 rust-version = "1.87"
 
 [dependencies]

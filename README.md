@@ -23,3 +23,10 @@ FLAGS:
     -h, --help      Prints help information
     -V, --version   Prints version information
 ```
+
+# License
+
+Both crabchip8 and GIC8 are licensed under the terms of the [Mozilla Public License](MPL),
+version 2.0.
+
+[MPL]: https://www.mozilla.org/MPL/
